@@ -5,7 +5,8 @@ const routes: Array<RouteRecordRaw> = [
     { path: '/tsDemo', component: () => import('../components/tsDemo/index.vue') },
     { path: '/edit', component: () => import('../components/tsDemo/edit.vue') },
     { path: '/todoList', component: () => import('../components/todoList/index.vue') },
-    { path: '/todoListDemo', component: () => import('../components/todoList/todoListDemo.vue') }
+    { path: '/todoListDemo', component: () => import('../components/todoList/todoListDemo.vue') },
+    { path: '/todoListDemo2', component: () => import('../components/todoList/todoListDemo2.vue') }
 
 ]
 
