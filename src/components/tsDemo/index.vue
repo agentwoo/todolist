@@ -112,6 +112,39 @@ function MySlice() {
 console.log('MySlice', MySlice());
 
 
+
+
+interface todoListItem {
+    text: string,
+    finished: boolean
+}
+
+// 添加num===>{text:string,finished:boolean,num:number}
+type TA = {
+    num: number
+} & todoListItem
+
+const aa: TA = {
+    text: '132',
+    finished: true,
+    num: 123
+}
+// console.log(aa);
+
+//去除finished===>{text:string,num:number}
+type TB = {
+    num: number
+} & Omit<todoListItem, 'finished'>
+
+const bb: TB = {
+    num: 0,
+    text: '123'
+}
+console.log('bb', bb);
+
+
+
+
 </script>
 
 <template>

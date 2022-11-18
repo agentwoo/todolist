@@ -3,6 +3,7 @@
 import { reactive, toRefs, ref, computed, watch } from 'vue'
 import { Plus, Delete, Edit, SetUp } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useTodoListStore } from '../../store/index'
 
 interface todoListItem {
     text: string,
@@ -11,47 +12,20 @@ interface todoListItem {
 
 const data = reactive({
     inputlVal: '',
-    // todoList: [] as todoListItem[],
-    todoList: JSON.parse(localStorage.getItem('todoList') as string) || [] as todoListItem[],
     showEditDialog: false,
-    showFinished: false,
     currentEditItem: null as null | todoListItem,
     editForm: {
         text: ''
     }
 })
 
+// 获取store中todoList数据
+const TodoListStore = useTodoListStore()
 
-watch(data.todoList, (newVal, oldVal) => {
-    localStorage.setItem('todoList', JSON.stringify(newVal))
-})
-
-
-// 使用toRefs对data进行解构，使之依旧是响应式
-// const { inputlVal, todoList, showEditDialog, showFinished, currentEditItem, editForm } = toRefs(data)
-
-// 获取展示列表
-const todoList$ = computed(() => {
-    if (data.showFinished) return data.todoList.filter((v: { finished: boolean; }) => v.finished)
-    return data.todoList.filter((v: { finished: boolean; }) => !v.finished)
-})
-
-// 计算已完成事项的长度
-const finishedCount$ = computed(() => {
-    return data.todoList.filter((v: { finished: boolean; }) => v.finished).length
-})
-
-// 计算未完成事项的长度
-const unFinishedCount$ = computed(() => {
-    return data.todoList.filter((v: { finished: boolean }) => !v.finished).length
-})
-
-// 添加待办项
+// 添加待办事项
 const addItem = () => {
-    let inputlVal = data.inputlVal.trim()
-    if (!inputlVal) return
-    let index = data.todoList.findIndex((v: { text: string; }) => v.text === inputlVal)
-    index === -1 ? (data.todoList.push({ finished: false, text: inputlVal }), successMessage('添加成功!')) : errMessage('该待办项已经存在')
+    const result = TodoListStore.addItem(data.inputlVal)
+    result ? successMessage('添加成功!') : errMessage('该待办项已经存在')
     data.inputlVal = ''
 }
 
@@ -59,8 +33,8 @@ const addItem = () => {
 async function delItem(item: todoListItem) {
     let opt = await delDialog('删除待办项', '提示')
     if (opt) {
-        let index = data.todoList.findIndex((v: { text: string; }) => v.text === item.text)
-        index === -1 ? errMessage('该待办项不存在') : (data.todoList.splice(index, 1), successMessage("删除成功"))
+        const result = TodoListStore.delItem(item)
+        result ? successMessage('删除成功!') : errMessage('该待办项已经存在')
     }
     else { errMessage('取消') }
 }
@@ -75,7 +49,6 @@ function delDialog(msg: string, title: string): Promise<boolean> {
         ElMessageBox.confirm(msg, title, opts)
             .then(() => { resolve(true) })
             .catch(() => { resolve(false) })
-
     })
 }
 
@@ -91,7 +64,7 @@ function validateForm(rule: any, value: string, callback: any) {
     const v = value.trim()
     if (!v) return callback("待办项不能为空")
 
-    let isExist = data.todoList.some((i: { text: string; }) => i.text === v)
+    let isExist = TodoListStore.todoList.some((i: { text: string; }) => i.text === v)
     return callback(isExist ? '该待办项已存在' : undefined)
 }
 
@@ -103,18 +76,9 @@ async function confirmEdit() {
 
     const valid = await $form.validate()
     if (!valid) return
-    // console.log('valid', valid);
 
-    const currentItem = data.currentEditItem
-    if (!currentItem) return
-
-    let index = data.todoList.findIndex((v: { text: string; }) => v.text === currentItem?.text)
-    if (index === -1) return
-
-    let updaText = data.editForm.text.trim()
-    data.todoList.splice(index, 1, { text: updaText, finished: false })
-
-    successMessage('修改成功！')
+    const result = TodoListStore.editItem(data.currentEditItem, data.editForm.text)
+    result ? successMessage('修改成功！') : undefined
 
     // 关闭编辑框
     data.showEditDialog = false
@@ -135,8 +99,6 @@ function errMessage(msg: string) {
     ElMessage.error(msg)
 }
 
-
-
 </script>
 
 <template>
@@ -150,17 +112,16 @@ function errMessage(msg: string) {
                     添加
                 </el-button>
             </div>
-            <!-- <div @click="getLocalStorage">123</div> -->
             <!-- 统计待办项 -->
-            <el-checkbox size="large" v-model="data.showFinished">
-                已完成({{ finishedCount$ }})/剩余待办({{ unFinishedCount$ }})
+            <el-checkbox size="large" v-model="TodoListStore.showFinished">
+                已完成({{ TodoListStore.finishedCount$ }})/剩余待办({{ TodoListStore.unFinishedCount$ }})
             </el-checkbox>
 
-            <el-empty v-if="data.todoList.length === 0" description="暂无待办事项" />
+            <el-empty v-if="TodoListStore.todoList$.length === 0" description="暂无待办事项" />
             <!-- 展示待办项 -->
             <template v-else>
                 <el-scrollbar height="400px">
-                    <p v-for="item in todoList$" :key="item.text" class="scrollbar-demo-item"
+                    <p v-for="item in TodoListStore.todoList$" :key="item.text" class="scrollbar-demo-item"
                         :class="{ 'isFinished': item.finished }">
                     <div class="itemText">
                         <el-checkbox size="large" v-model="item.finished" />
